@@ -124,7 +124,47 @@ function showDominant() {
   });
 }
 
-$('picker').addEventListener('input', (e) => pick(hexToRgb(e.target.value)));
+// --- custom colour picker (HSV) ---
+const P = { h: 40, s: 0.94, v: 0.72 };
+function hsvToRgb(h, s, v) {
+  const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return [f(5), f(3), f(1)].map((x) => Math.round(x * 255));
+}
+function rgbToHsv([r, g, b]) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s: mx ? d / mx : 0, v: mx };
+}
+function renderPicker(fromHex) {
+  const rgb = hsvToRgb(P.h, P.s, P.v), hx = hex(rgb).toUpperCase();
+  $('sv').style.setProperty('--h', P.h);
+  $('svKnob').style.left = P.s * 100 + '%';
+  $('svKnob').style.top = (1 - P.v) * 100 + '%';
+  $('svKnob').style.background = hx;
+  $('hue').value = P.h;
+  $('preview').style.background = hx;
+  $('pickDot').style.background = hx;
+  if (!fromHex) $('hexIn').value = hx;
+}
+const svDrag = (e) => {
+  const r = $('sv').getBoundingClientRect();
+  P.s = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  P.v = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+  renderPicker();
+};
+$('sv').addEventListener('pointerdown', (e) => { $('sv').setPointerCapture(e.pointerId); svDrag(e); });
+$('sv').addEventListener('pointermove', (e) => { if (e.buttons) svDrag(e); });
+$('hue').addEventListener('input', (e) => { P.h = +e.target.value; renderPicker(); });
+$('hexIn').addEventListener('input', (e) => {
+  let v = e.target.value.trim(); if (!v.startsWith('#')) v = '#' + v;
+  if (/^#[0-9a-f]{6}$/i.test(v)) { Object.assign(P, rgbToHsv(hexToRgb(v))); renderPicker(true); }
+});
+$('hexIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('applyPick').click(); });
+$('pickBtn').onclick = () => { $('pickerPanel').hidden = !$('pickerPanel').hidden; renderPicker(); };
+$('applyPick').onclick = () => pick(hsvToRgb(P.h, P.s, P.v));
+renderPicker();
 
 // --- matching & rendering ---
 function pick(rgb) {
