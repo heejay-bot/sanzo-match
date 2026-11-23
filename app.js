@@ -55,38 +55,129 @@ const saveFavs = () => localStorage.setItem('sanzo-favs', JSON.stringify(favs));
 const canvas = $('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
 let marker = null, img = null;
 
-$('file').addEventListener('change', async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  img = await createImageBitmap(f);
+async function loadImage(src) {
+  img = src;
   const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
-  canvas.width = img.width * scale; canvas.height = img.height * scale;
+  canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
   marker = null; draw();
   $('stage').hidden = false;
   showDominant();
+}
+$('file').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  e.target.value = '';
+  await loadImage(await createImageBitmap(f));
 });
 function draw() {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   if (marker) {
+    const r = marker.r || 14;
     ctx.lineWidth = 3; ctx.strokeStyle = '#fff';
-    ctx.beginPath(); ctx.arc(marker.x, marker.y, 14, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(marker.x, marker.y, r, 0, 7); ctx.stroke();
     ctx.lineWidth = 1.5; ctx.strokeStyle = '#000';
-    ctx.beginPath(); ctx.arc(marker.x, marker.y, 16, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(marker.x, marker.y, r + 2, 0, 7); ctx.stroke();
   }
+}
+// Average colour inside a circle, done in linear light; drops the darkest and
+// brightest 10% (shadows, glare) before averaging.
+function circleAverage(c2d, cx, cy, r) {
+  const x0 = Math.max(0, Math.floor(cx - r)), y0 = Math.max(0, Math.floor(cy - r));
+  const w = Math.max(1, Math.ceil(r * 2)), h = w;
+  const d = c2d.getImageData(x0, y0, w, h).data, px = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if ((x0 + x - cx) ** 2 + (y0 + y - cy) ** 2 > r * r) continue;
+    const i = (y * w + x) * 4;
+    const l = [lin(d[i]), lin(d[i + 1]), lin(d[i + 2])];
+    px.push({ l, y: l[0] * 0.2126 + l[1] * 0.7152 + l[2] * 0.0722 });
+  }
+  if (!px.length) return [0, 0, 0];
+  px.sort((a, b) => a.y - b.y);
+  const cut = Math.floor(px.length * 0.1), keep = px.slice(cut, px.length - cut || undefined);
+  const s = [0, 0, 0];
+  keep.forEach((p) => { s[0] += p.l[0]; s[1] += p.l[1]; s[2] += p.l[2]; });
+  const enc = (v) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
+  return s.map((v) => Math.min(255, Math.max(0, enc(v / keep.length))));
 }
 canvas.addEventListener('pointerdown', (e) => {
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * canvas.width / r.width;
   const y = (e.clientY - r.top) * canvas.height / r.height;
-  const rad = Math.max(3, Math.round(canvas.width / 150));
+  const rad = Math.max(6, Math.round(Math.min(canvas.width, canvas.height) * 0.04));
   draw(); // sample from clean image
-  const d = ctx.getImageData(Math.max(0, x - rad), Math.max(0, y - rad), rad * 2, rad * 2).data;
-  // median per channel resists highlights / specks
-  const ch = [[], [], []];
-  for (let i = 0; i < d.length; i += 4) { ch[0].push(d[i]); ch[1].push(d[i + 1]); ch[2].push(d[i + 2]); }
-  const rgb = ch.map((a) => a.sort((p, q) => p - q)[a.length >> 1]);
-  marker = { x, y }; draw();
+  const rgb = circleAverage(ctx, x, y, rad);
+  marker = { x, y, r: rad }; draw();
   pick(rgb);
 });
+
+// --- live camera ---
+let stream = null, ringFrac = 0.12, liveTimer = null;
+const video = $('video');
+const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+// Map the on-screen ring (video is object-fit: cover) to video pixel space.
+function ringInVideo() {
+  const vw = video.videoWidth, vh = video.videoHeight, sw = video.clientWidth, sh = video.clientHeight;
+  const s = Math.max(sw / vw, sh / vh);
+  return { cx: vw / 2, cy: vh / 2, r: (Math.min(sw, sh) * ringFrac) / s };
+}
+function layoutRing() {
+  const d = Math.min(video.clientWidth, video.clientHeight) * ringFrac * 2;
+  Object.assign($('ring').style, { width: d + 'px', height: d + 'px' });
+}
+function sampleLive() {
+  if (!video.videoWidth) return null;
+  const { cx, cy, r } = ringInVideo();
+  const k = Math.min(1, 60 / r); // downsample for speed
+  const size = Math.ceil(r * 2 * k);
+  probe.canvas.width = probe.canvas.height = size;
+  probe.drawImage(video, cx - r, cy - r, r * 2, r * 2, 0, 0, size, size);
+  return circleAverage(probe, size / 2, size / 2, size / 2);
+}
+async function openCam() {
+  $('cam').hidden = false; $('camErr').hidden = true;
+  document.body.style.overflow = 'hidden';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    video.srcObject = stream; await video.play();
+    layoutRing();
+    liveTimer = setInterval(() => {
+      const rgb = sampleLive(); if (!rgb) return;
+      const hx = hex(rgb).toUpperCase();
+      const near = COLORS.reduce((b, c) => { const d = deltaE2000(rgbToLab(rgb), c._lab); return d < b.d ? { c, d } : b; }, { d: Infinity });
+      $('liveDot').style.background = hx;
+      $('liveTxt').textContent = `${hx} · ${near.c.name}`;
+    }, 250);
+  } catch (err) {
+    $('camErr').hidden = false;
+    $('camErr').textContent = location.protocol !== 'https:' && location.hostname !== 'localhost'
+      ? '카메라는 https 주소에서만 쓸 수 있어요.'
+      : '카메라를 열 수 없어요. 브라우저 설정에서 카메라 권한을 허용해 주세요.';
+  }
+}
+function closeCam() {
+  clearInterval(liveTimer); liveTimer = null;
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  video.srcObject = null; $('cam').hidden = true; document.body.style.overflow = '';
+}
+$('camBtn').onclick = openCam;
+$('camClose').onclick = closeCam;
+window.addEventListener('resize', () => { if (stream) layoutRing(); });
+document.querySelectorAll('.sizes button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('.sizes button').forEach((x) => x.classList.remove('on'));
+  b.classList.add('on'); ringFrac = +b.dataset.r; layoutRing();
+});
+$('shutter').onclick = async () => {
+  if (!video.videoWidth) return;
+  const rgb = sampleLive();
+  const { cx, cy, r } = ringInVideo();
+  const snap = document.createElement('canvas');
+  snap.width = video.videoWidth; snap.height = video.videoHeight;
+  snap.getContext('2d').drawImage(video, 0, 0);
+  closeCam();
+  await loadImage(snap);
+  const s = canvas.width / snap.width;
+  marker = { x: cx * s, y: cy * s, r: r * s }; draw();
+  pick(rgb);
+};
 
 function showDominant() {
   // k-means (k=6) on downsampled pixels in Lab
