@@ -1,4 +1,5 @@
 *{box-sizing:border-box}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;background:#f4efe6;color:#222}
 header{padding:20px 16px 4px;max-width:760px;margin:auto}
 h1{margin:0;white-space:nowrap;font-size:clamp(18px,5.5vw,28px);font-family:Georgia,serif;font-weight:400;letter-spacing:.5px}
