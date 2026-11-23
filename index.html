@@ -23,6 +23,7 @@
       </label>
       <button class="btn" id="pickBtn"><span id="pickDot" class="dot"></span>직접 입력</button>
       <button class="btn" id="favBtn">즐겨찾기</button>
+      <button class="btn" id="wardBtn">옷장</button>
     </div>
     <div id="pickerPanel" hidden>
       <div id="sv" class="sv"><div id="svKnob" class="knob"></div></div>
@@ -44,11 +45,28 @@
     <div class="picked">
       <div id="pickedSwatch" class="swatch big"></div>
       <div><div class="label">선택한 색</div><div id="pickedHex" class="mono"></div></div>
+      <button class="btn" id="toWard" style="margin-left:auto">옷장에 담기</button>
+    </div>
+    <div id="addItem" class="additem" hidden>
+      <select id="itemCat"></select>
+      <input id="itemName" placeholder="이름 (예: 네이비 니트)" maxlength="30">
+      <button class="btn primary" id="saveItem">저장</button>
     </div>
     <h2>가장 가까운 색</h2>
     <div id="matches" class="matches"></div>
     <h2 id="comboTitle">조합</h2>
     <div id="combos"></div>
+  </section>
+
+  <section id="ward" class="card" hidden>
+    <h2>옷장</h2>
+    <p class="hint">색을 찾은 뒤 ‘옷장에 담기’로 옷을 저장하세요. 아래에서 입을 옷을 고르면 어울리는 조합을 찾아줘요.</p>
+    <div id="wardList"></div>
+    <h2>코디 매칭</h2>
+    <div id="outfitSel" class="outfitsel"></div>
+    <div id="outfitRes"></div>
+    <h2>저장한 코디</h2>
+    <div id="outfitList"></div>
   </section>
 
   <section id="favs" class="card" hidden>

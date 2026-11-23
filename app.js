@@ -183,6 +183,8 @@ function pick(rgb) {
     box.append(el);
   });
   showCombos(ranked[0].c);
+  lastPick = { rgb, sanzo: ranked[0].c };
+  $('addItem').hidden = true;
   $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -222,6 +224,139 @@ function renderFavs() {
   favs.forEach((k) => box.append(comboEl(k)));
 }
 $('favBtn').onclick = () => { $('favs').hidden = !$('favs').hidden; renderFavs(); if (!$('favs').hidden) $('favs').scrollIntoView({ behavior: 'smooth' }); };
+
+// --- wardrobe ---
+let lastPick = null;
+const CATS = ['상의', '하의', '겉옷', '신발', '가방', '액세서리'];
+const MAIN_CATS = ['상의', '하의', '겉옷', '신발'];
+const load = (k) => JSON.parse(localStorage.getItem(k) || '[]');
+let items = load('sanzo-items'), outfits = load('sanzo-outfits');
+const saveItems = () => localStorage.setItem('sanzo-items', JSON.stringify(items));
+const saveOutfits = () => localStorage.setItem('sanzo-outfits', JSON.stringify(outfits));
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sel = {}; // cat -> item id
+
+$('itemCat').innerHTML = CATS.map((c) => `<option>${c}</option>`).join('');
+$('toWard').onclick = () => { $('addItem').hidden = !$('addItem').hidden; $('itemName').focus(); };
+$('saveItem').onclick = () => {
+  if (!lastPick) return;
+  const cat = $('itemCat').value;
+  items.push({ id: Date.now(), cat, name: $('itemName').value.trim() || cat, hex: hex(lastPick.rgb) });
+  saveItems(); $('itemName').value = ''; $('addItem').hidden = true;
+  toast(`${cat}에 저장됨`); renderWard();
+};
+$('wardBtn').onclick = () => { $('ward').hidden = !$('ward').hidden; renderWard(); if (!$('ward').hidden) $('ward').scrollIntoView({ behavior: 'smooth' }); };
+
+function itemChip(it, { onclick, active, del } = {}) {
+  const el = document.createElement('div');
+  el.className = 'item' + (active ? ' active' : '');
+  el.innerHTML = `<span class="dot" style="background:${it.hex}"></span><span class="iname">${esc(it.name)}</span>`;
+  if (onclick) el.onclick = onclick;
+  if (del) {
+    const x = Object.assign(document.createElement('button'), { className: 'x', textContent: '×' });
+    x.onclick = (e) => { e.stopPropagation(); del(); };
+    el.append(x);
+  }
+  return el;
+}
+
+function renderWard() {
+  const list = $('wardList'); list.innerHTML = '';
+  if (!items.length) list.innerHTML = '<p class="hint">아직 저장한 옷이 없어요.</p>';
+  const selBox = $('outfitSel'); selBox.innerHTML = '';
+  CATS.forEach((cat) => {
+    const its = items.filter((i) => i.cat === cat);
+    if (!its.length) return;
+    const row = document.createElement('div'); row.className = 'catrow';
+    row.innerHTML = `<div class="cat">${cat}</div>`;
+    const wrap = document.createElement('div'); wrap.className = 'items';
+    its.forEach((it) => wrap.append(itemChip(it, { del: () => {
+      if (!confirm(`'${it.name}' 삭제할까요?`)) return;
+      items = items.filter((x) => x.id !== it.id); if (sel[cat] === it.id) delete sel[cat];
+      saveItems(); renderWard();
+    } })));
+    row.append(wrap); list.append(row);
+    const srow = document.createElement('div'); srow.className = 'catrow';
+    srow.innerHTML = `<div class="cat">${cat}</div>`;
+    const swrap = document.createElement('div'); swrap.className = 'items';
+    its.forEach((it) => swrap.append(itemChip(it, { active: sel[cat] === it.id, onclick: () => {
+      if (sel[cat] === it.id) delete sel[cat]; else sel[cat] = it.id;
+      renderWard();
+    } })));
+    srow.append(swrap); selBox.append(srow);
+  });
+  renderOutfitResults();
+  renderOutfits();
+}
+
+// Score every Sanzo combination against the chosen garments.
+function matchOutfit(chosen) {
+  const labs = chosen.map((it) => rgbToLab(hexToRgb(it.hex)));
+  const out = [];
+  for (const [k, members] of COMBOS) {
+    if (members.length < chosen.length) continue;
+    const pairs = [];
+    labs.forEach((l, i) => members.forEach((m, j) => pairs.push({ i, j, d: deltaE2000(l, m._lab) })));
+    pairs.sort((a, b) => a.d - b.d);
+    const ui = new Set(), uj = new Set(), assign = {};
+    let sum = 0;
+    for (const p of pairs) {
+      if (ui.has(p.i) || uj.has(p.j)) continue;
+      ui.add(p.i); uj.add(p.j); assign[p.i] = p.j; sum += p.d;
+      if (ui.size === labs.length) break;
+    }
+    out.push({ k, members, assign, score: sum / labs.length, free: members.filter((_, j) => !uj.has(j)) });
+  }
+  return out.sort((a, b) => a.score - b.score).slice(0, 8);
+}
+
+function renderOutfitResults() {
+  const box = $('outfitRes'); box.innerHTML = '';
+  const chosen = CATS.filter((c) => sel[c]).map((c) => items.find((i) => i.id === sel[c])).filter(Boolean);
+  if (!chosen.length) { box.innerHTML = '<p class="hint">위에서 입을 옷을 하나 이상 고르세요.</p>'; return; }
+  const empty = MAIN_CATS.filter((c) => !sel[c]);
+  matchOutfit(chosen).forEach((r) => {
+    const el = document.createElement('div'); el.className = 'ores';
+    const bars = r.members.map((m) => `<div class="obar" style="background:${m.hex};color:${textOn(m.rgb)}">${m.name}</div>`).join('');
+    const mine = chosen.map((it, i) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${esc(it.name)} → <span class="dot" style="background:${r.members[r.assign[i]].hex}"></span></span>`).join('');
+    let sugg = '';
+    if (r.free.length && empty.length) {
+      const tips = [];
+      empty.forEach((cat) => {
+        let best = null;
+        items.filter((i) => i.cat === cat).forEach((it) => r.free.forEach((m) => {
+          const d = deltaE2000(rgbToLab(hexToRgb(it.hex)), m._lab);
+          if (d < 15 && (!best || d < best.d)) best = { it, d };
+        }));
+        if (best) tips.push(`${cat}: ${esc(best.it.name)}`);
+      });
+      sugg = `<div class="hint">남은 색: ${r.free.map((m) => `<span class="dot" style="background:${m.hex}"></span>`).join('')}${tips.length ? ' · 옷장에서 추천 → ' + tips.join(', ') : ''}</div>`;
+    }
+    el.innerHTML = `<div class="obars">${bars}</div><div class="ometa">${mine}<span class="de">ΔE ${r.score.toFixed(1)} · #${r.k}</span></div>${sugg}`;
+    const save = Object.assign(document.createElement('button'), { className: 'btn small', textContent: '이 코디 저장' });
+    save.onclick = () => {
+      const name = prompt('코디 이름', `코디 ${outfits.length + 1}`); if (name === null) return;
+      outfits.push({ id: Date.now(), name: name || `코디 ${outfits.length + 1}`, items: chosen.map((i) => i.id), k: r.k });
+      saveOutfits(); renderOutfits(); toast('코디 저장됨');
+    };
+    el.append(save); box.append(el);
+  });
+}
+
+function renderOutfits() {
+  const box = $('outfitList'); box.innerHTML = '';
+  if (!outfits.length) { box.innerHTML = '<p class="hint">저장한 코디가 없어요.</p>'; return; }
+  outfits.forEach((o) => {
+    const its = o.items.map((id) => items.find((i) => i.id === id)).filter(Boolean);
+    const el = document.createElement('div'); el.className = 'ores';
+    el.innerHTML = `<div class="oname">${esc(o.name)} <span class="de">#${o.k}</span></div>
+      <div class="obars">${COMBOS.get(o.k).map((m) => `<div class="obar" style="background:${m.hex};color:${textOn(m.rgb)}">${m.name}</div>`).join('')}</div>
+      <div class="ometa">${its.map((it) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${it.cat} · ${esc(it.name)}</span>`).join('')}</div>`;
+    const del = Object.assign(document.createElement('button'), { className: 'btn small', textContent: '삭제' });
+    del.onclick = () => { if (!confirm('삭제할까요?')) return; outfits = outfits.filter((x) => x.id !== o.id); saveOutfits(); renderOutfits(); };
+    el.append(del); box.append(el);
+  });
+}
 
 function toast(msg) {
   const t = Object.assign(document.createElement('div'), { className: 'toast', textContent: msg });

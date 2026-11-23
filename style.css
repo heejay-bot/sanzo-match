@@ -9,6 +9,24 @@ h1{margin:0;white-space:nowrap;font-size:clamp(18px,5.5vw,28px);font-family:Geor
 .combo .bar.hl::before{content:'●';position:absolute;top:6px;left:7px;font-size:9px}
 .combo .bar{position:relative}
 main{max-width:760px;margin:auto;padding:8px 16px 40px}
+.additem{display:flex;gap:6px;margin-top:10px}
+.additem select,.additem input{padding:9px;border:1px solid #ccc;border-radius:10px;font-size:15px;background:#fff}
+.additem input{flex:1;min-width:0}
+.catrow{display:flex;gap:8px;align-items:flex-start;margin:6px 0}
+.cat{flex:none;width:56px;font-size:12px;color:#888;padding-top:8px}
+.items{display:flex;flex-wrap:wrap;gap:6px}
+.item{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:13px;cursor:pointer}
+.item.active{border-color:#222;box-shadow:0 0 0 1px #222}
+.item .x{border:none;background:none;color:#aaa;font-size:15px;padding:0 0 0 2px;cursor:pointer}
+.item .dot,.mini .dot,.hint .dot{width:14px;height:14px;display:inline-block;vertical-align:middle}
+.ores{background:#fff;border-radius:10px;padding:8px;margin:8px 0;box-shadow:0 1px 2px #0002}
+.obars{display:flex;height:48px;border-radius:6px;overflow:hidden}
+.obar{flex:1 1 0;min-width:0;font-size:10px;padding:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:flex-end}
+.ometa{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:6px;align-items:center}
+.mini{display:inline-flex;align-items:center;gap:4px}
+.oname{font-size:14px;margin-bottom:6px}
+.de{font-size:11px;color:#888}
+.btn.small{padding:5px 10px;font-size:12px;margin-top:6px}
 .card{background:#fffdf8;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 3px #0001}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:10px;border:1px solid #ccc;background:#fff;font-size:14px;cursor:pointer}
