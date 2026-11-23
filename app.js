@@ -358,6 +358,29 @@ function renderOutfits() {
   });
 }
 
+// --- backup ---
+$('exportBtn').onclick = () => {
+  const data = { app: 'sanzo-match', v: 1, at: new Date().toISOString(), items, outfits, favs };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
+  a.download = `sanzo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'sanzo-match') throw 0;
+    const merge = (cur, inc, key) => { const ids = new Set(cur.map(key)); return [...cur, ...(inc || []).filter((x) => !ids.has(key(x)))]; };
+    items = merge(items, d.items, (x) => x.id);
+    outfits = merge(outfits, d.outfits, (x) => x.id);
+    favs = merge(favs, d.favs, (x) => x);
+    saveItems(); saveOutfits(); saveFavs(); renderWard(); renderFavs();
+    toast(`불러옴: 옷 ${d.items?.length || 0}, 코디 ${d.outfits?.length || 0}`);
+  } catch { toast('백업 파일이 아니에요'); }
+});
+navigator.storage?.persist?.();
+
 function toast(msg) {
   const t = Object.assign(document.createElement('div'), { className: 'toast', textContent: msg });
   document.body.append(t); setTimeout(() => t.remove(), 1400);
