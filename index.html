@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4efe6">
+<link rel="manifest" href="manifest.json">
+<title>Sanzo Match</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Sanzo Match</h1>
+  <p class="sub">A Dictionary of Color Combinations · 와다 산조</p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <label class="btn primary">사진 촬영 / 업로드
+        <input id="file" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <label class="btn">직접 입력
+        <input id="picker" type="color" value="#b8860b">
+      </label>
+      <button class="btn" id="favBtn">즐겨찾기</button>
+    </div>
+    <div id="stage" hidden>
+      <canvas id="canvas"></canvas>
+      <p class="hint">사진에서 원하는 지점을 탭하세요 (주변 픽셀 평균)</p>
+      <div id="dominant" class="chips"></div>
+    </div>
+  </section>
+
+  <section id="result" class="card" hidden>
+    <div class="picked">
+      <div id="pickedSwatch" class="swatch big"></div>
+      <div><div class="label">선택한 색</div><div id="pickedHex" class="mono"></div></div>
+    </div>
+    <h2>가장 가까운 산조 색</h2>
+    <div id="matches" class="matches"></div>
+    <h2 id="comboTitle">조합</h2>
+    <div id="combos"></div>
+  </section>
+
+  <section id="favs" class="card" hidden>
+    <h2>즐겨찾기 조합</h2>
+    <div id="favList"></div>
+  </section>
+</main>
+<script src="app.js" type="module"></script>
+</body>
+</html>
