@@ -1,9 +1,10 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;background:#f4efe6;color:#222}
 header{padding:20px 16px 4px;max-width:760px;margin:auto}
-h1{margin:0;font-family:Georgia,serif;font-weight:400;letter-spacing:.5px}
+h1{margin:0;white-space:nowrap;font-size:clamp(14px,4.6vw,28px);font-family:Georgia,serif;font-weight:400;letter-spacing:.5px}
 .sub{margin:4px 0 0;color:#777;font-size:13px}
 .sub.ja{color:#555;font-size:14px;margin-top:6px}
+.sub.en{font-size:11px;color:#999;letter-spacing:.2px;margin-top:2px}
 .combo .bar.hl{box-shadow:inset 0 -4px 0 #0006}
 main{max-width:760px;margin:auto;padding:8px 16px 40px}
 .card{background:#fffdf8;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 3px #0001}
@@ -29,7 +30,7 @@ h2{font-size:15px;margin:18px 0 8px}
 .match .de{font-size:11px;color:#888}
 .combo{display:flex;align-items:stretch;margin:8px 0;border-radius:10px;overflow:hidden;box-shadow:0 1px 2px #0002;background:#fff}
 .combo .bars{display:flex;flex:1;height:84px}
-.combo .bar{flex:1 1 0;min-width:0;overflow:hidden;word-break:break-all;display:flex;align-items:flex-end;padding:6px;font-size:10px;cursor:pointer}
+.combo .bar{flex:1 1 0;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;padding:50px 6px 6px;font-size:10px;line-height:14px;cursor:pointer}
 .combo .meta{display:flex;flex-direction:column;justify-content:center;align-items:center;width:52px;font-size:11px;color:#666}
 .combo .star{font-size:20px;background:none;border:none;cursor:pointer}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px}
