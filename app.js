@@ -153,7 +153,7 @@ function comboEl(k, highlight) {
   members.forEach((m) => {
     const b = document.createElement('div'); b.className = 'bar';
     b.style.background = m.hex; b.style.color = textOn(m.rgb);
-    if (highlight && m.id === highlight.id) b.style.flex = '1.6';
+    if (highlight && m.id === highlight.id) b.classList.add('hl');
     b.innerHTML = `${m.name}<br>${m.hex}`;
     b.title = '탭하여 HEX 복사';
     b.onclick = () => { navigator.clipboard?.writeText(m.hex); toast(`${m.hex} 복사됨`); };
