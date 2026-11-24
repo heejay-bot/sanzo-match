@@ -60,7 +60,7 @@ async function loadImage(src) {
   const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
   canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
   marker = null; draw();
-  $('stage').hidden = false;
+  $('stage').hidden = false; $('readout').hidden = true;
   showDominant();
 }
 $('file').addEventListener('change', async (e) => {
@@ -98,16 +98,20 @@ function circleAverage(c2d, cx, cy, r) {
   const enc = (v) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
   return s.map((v) => Math.min(255, Math.max(0, enc(v / keep.length))));
 }
-canvas.addEventListener('pointerdown', (e) => {
+function sampleAt(e) {
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * canvas.width / r.width;
   const y = (e.clientY - r.top) * canvas.height / r.height;
   const rad = Math.max(6, Math.round(Math.min(canvas.width, canvas.height) * 0.04));
-  draw(); // sample from clean image
+  marker = null; draw(); // sample from clean image
   const rgb = circleAverage(ctx, x, y, rad);
   marker = { x, y, r: rad }; draw();
-  pick(rgb);
-});
+  pick(rgb, { scroll: false });
+}
+// Tap or drag on the photo: stays in place so you can see where you sampled.
+canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); sampleAt(e); });
+canvas.addEventListener('pointermove', (e) => { if (e.buttons) sampleAt(e); });
+$('roGo').onclick = () => $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 // --- live camera ---
 let stream = null, ringFrac = 0.12, liveTimer = null;
@@ -176,7 +180,8 @@ $('shutter').onclick = async () => {
   await loadImage(snap);
   const s = canvas.width / snap.width;
   marker = { x: cx * s, y: cy * s, r: r * s }; draw();
-  pick(rgb);
+  pick(rgb, { scroll: false });
+  $('stage').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 function showDominant() {
@@ -210,7 +215,7 @@ function showDominant() {
   out.forEach(({ rgb }) => {
     const el = document.createElement('div');
     el.className = 'chip'; el.style.background = hex(rgb); el.title = hex(rgb);
-    el.onclick = () => pick(rgb.map(Math.round));
+    el.onclick = () => pick(rgb.map(Math.round), { scroll: false });
     $('dominant').append(el);
   });
 }
@@ -258,7 +263,7 @@ $('applyPick').onclick = () => pick(hsvToRgb(P.h, P.s, P.v));
 renderPicker();
 
 // --- matching & rendering ---
-function pick(rgb) {
+function pick(rgb, { scroll = true } = {}) {
   const lab = rgbToLab(rgb);
   const ranked = COLORS.map((c) => ({ c, de: deltaE2000(lab, c._lab) })).sort((a, b) => a.de - b.de).slice(0, 5);
   $('result').hidden = false;
@@ -276,7 +281,15 @@ function pick(rgb) {
   showCombos(ranked[0].c);
   lastPick = { rgb, sanzo: ranked[0].c };
   $('addItem').hidden = true;
-  $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showReadout(rgb, ranked[0]);
+  if (scroll) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function showReadout(rgb, best) {
+  $('readout').hidden = $('stage').hidden;
+  $('roSwatch').style.background = hex(rgb);
+  $('roBest').style.background = best.c.hex;
+  $('roHex').textContent = hex(rgb).toUpperCase();
+  $('roName').textContent = `${best.c.name} · ΔE ${best.de.toFixed(1)}`;
 }
 
 function comboEl(k, highlight) {

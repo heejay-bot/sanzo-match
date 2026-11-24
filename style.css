@@ -1,4 +1,5 @@
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;background:#f4efe6;color:#222}
 header{padding:20px 16px 4px;max-width:760px;margin:auto}
@@ -42,7 +43,13 @@ main{max-width:760px;margin:auto;padding:8px 16px 40px}
 .pick-row{align-items:center;margin-top:10px;flex-wrap:nowrap}
 .preview{width:44px;height:44px;flex:none}
 .hexin{flex:1;min-width:0;font-size:16px;padding:10px;border:1px solid #ccc;border-radius:10px;text-transform:uppercase}
-canvas{width:100%;margin-top:12px;border-radius:10px;touch-action:none;cursor:crosshair}
+canvas{display:block;max-width:100%;max-height:58vh;margin:12px auto 0;border-radius:10px;touch-action:none;cursor:crosshair}
+.readout{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px;background:#fff;border-radius:12px;box-shadow:0 1px 3px #0002}
+.rosw{width:36px;height:36px;border-radius:8px;flex:none;box-shadow:inset 0 0 0 1px #0002}
+.roarrow{color:#aaa;font-size:13px}
+.rotext{flex:1;min-width:0}
+.roname{font-size:12px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout .btn{padding:8px 10px;font-size:13px;flex:none}
 .hint{font-size:12px;color:#888;margin:6px 0}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{width:34px;height:34px;border-radius:8px;border:2px solid #fff;box-shadow:0 0 0 1px #ddd;cursor:pointer}

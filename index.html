@@ -37,7 +37,12 @@
     </div>
     <div id="stage" hidden>
       <canvas id="canvas"></canvas>
-      <p class="hint">사진에서 원하는 지점을 탭하세요 (주변 픽셀 평균)</p>
+      <div id="readout" class="readout" hidden>
+        <span id="roSwatch" class="rosw"></span><span class="roarrow">→</span><span id="roBest" class="rosw"></span>
+        <div class="rotext"><div id="roHex" class="mono"></div><div id="roName" class="roname"></div></div>
+        <button class="btn primary" id="roGo">조합 보기 ↓</button>
+      </div>
+      <p class="hint">사진을 탭하거나 끌어서 원하는 지점을 고르세요 (원 안의 평균색)</p>
       <div id="dominant" class="chips"></div>
     </div>
   </section>
