@@ -1,0 +1,18 @@
+{
+  "name": "sanzo-match",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "www": "rm -rf www && mkdir www && cp index.html style.css app.js store.js colors.json manifest.json www/",
+    "sync": "npm run www && npx cap sync",
+    "apk": "npm run sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/cli": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/preferences": "^7.0.4",
+    "@capacitor/share": "^7.0.4"
+  }
+}

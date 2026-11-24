@@ -1,4 +1,5 @@
 // Sanzo Match: photo -> nearest Sanzo Wada colour (CIEDE2000) -> combinations
+import { load, save, exportFile, isNative } from './store.js';
 const $ = (id) => document.getElementById(id);
 const COLORS = await (await fetch('colors.json')).json();
 
@@ -48,8 +49,8 @@ COLORS.forEach((c) => c.combinations.forEach((k) => {
 }));
 
 // --- state ---
-let favs = JSON.parse(localStorage.getItem('sanzo-favs') || '[]');
-const saveFavs = () => localStorage.setItem('sanzo-favs', JSON.stringify(favs));
+let favs = load('sanzo-favs');
+const saveFavs = () => save('sanzo-favs', favs);
 
 // --- image handling ---
 const canvas = $('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -333,10 +334,9 @@ $('favBtn').onclick = () => { $('favs').hidden = !$('favs').hidden; renderFavs()
 let lastPick = null;
 const CATS = ['상의', '하의', '겉옷', '신발', '가방', '액세서리'];
 const MAIN_CATS = ['상의', '하의', '겉옷', '신발'];
-const load = (k) => JSON.parse(localStorage.getItem(k) || '[]');
 let items = load('sanzo-items'), outfits = load('sanzo-outfits');
-const saveItems = () => localStorage.setItem('sanzo-items', JSON.stringify(items));
-const saveOutfits = () => localStorage.setItem('sanzo-outfits', JSON.stringify(outfits));
+const saveItems = () => save('sanzo-items', items);
+const saveOutfits = () => save('sanzo-outfits', outfits);
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const sel = {}; // cat -> item id
 
@@ -465,10 +465,8 @@ function renderOutfits() {
 // --- backup ---
 $('exportBtn').onclick = () => {
   const data = { app: 'sanzo-match', v: 1, at: new Date().toISOString(), items, outfits, favs };
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
-  a.download = `sanzo-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  exportFile(`sanzo-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 1))
+    .catch(() => toast('내보내기를 취소했어요'));
 };
 $('importFile').addEventListener('change', async (e) => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -490,4 +488,4 @@ function toast(msg) {
   document.body.append(t); setTimeout(() => t.remove(), 1400);
 }
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!isNative && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
