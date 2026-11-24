@@ -1,5 +1,9 @@
 {
   "appId": "io.github.heejaybot.sanzomatch",
   "appName": "配色事典",
-  "webDir": "www"
+  "webDir": "www",
+  "backgroundColor": "#f4efe6",
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force"
+  }
 }

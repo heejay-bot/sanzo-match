@@ -2,7 +2,7 @@
 [hidden]{display:none!important}
 html{touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;background:#f4efe6;color:#222}
-header{padding:20px 16px 4px;max-width:760px;margin:auto}
+header{padding:calc(20px + env(safe-area-inset-top)) 16px 4px;max-width:760px;margin:auto}
 h1{margin:0;white-space:nowrap;font-size:clamp(18px,5.5vw,28px);font-family:Georgia,serif;font-weight:400;letter-spacing:.5px}
 .sub{margin:4px 0 0;color:#777;font-size:13px}
 .sub.ja{color:#555;font-size:14px;margin-top:6px}
