@@ -63,8 +63,8 @@
     <h2>가장 가까운 색</h2>
     <div id="matches" class="matches"></div>
     <div class="combohead"><h2 id="comboTitle">조합</h2>
-      <div class="ratio-tg"><button data-m="equal">균등</button><button data-m="ratio">비율</button></div></div>
-    <p class="hint ratio-note">비율: 차분한 색은 넓게, 강하고 튀는 색(보색)은 좁게 · 2색 70:30 · 3색 60:30:10 · 4색 50:25:15:10</p>
+      <div class="ratio-tg"><button data-m="equal">균등</button><button data-m="role">비율</button><button data-m="itten">이텐</button></div></div>
+    <p class="hint ratio-note">비율: 가벼운 색(어둡고 탁한 색)이 지배색, 밝고 선명한 색이 강조색 · 이텐: 시각 무게의 역수 · 조합의 ‘비율’ 버튼으로 직접 조정</p>
     <div id="combos"></div>
   </section>
 
@@ -90,6 +90,20 @@
     <div id="favList"></div>
   </section>
 </main>
+<div id="ratioSheet" class="sheet-bg" hidden>
+  <div class="sheet">
+    <div class="sheet-head"><b>면적 비율</b><button class="camx dark" id="rsClose">✕</button></div>
+    <div class="row rs-ctrl">
+      <select id="rsProfile"></select>
+      <label class="chk"><input type="checkbox" id="rsTheory"> 이론 모드</label>
+      <button class="btn small" id="rsReset">제안값으로</button>
+    </div>
+    <div id="rsBars"></div>
+    <div id="rsWarn" class="warn"></div>
+    <div id="rsSliders"></div>
+    <p class="hint">제안은 정답이 아니라 추천 범위예요. 슬라이더를 움직이면 나머지가 자동으로 맞춰져 합계 100%를 유지해요.</p>
+  </div>
+</div>
 <div id="cam" class="cam" hidden>
   <video id="video" playsinline muted autoplay poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
   <div id="ring" class="ring"></div>

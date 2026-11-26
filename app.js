@@ -1,5 +1,6 @@
 // Sanzo Match: photo -> nearest Sanzo Wada colour (CIEDE2000) -> combinations
 import { load, save, exportFile, isNative } from './store.js';
+import { suggestRoleRatios, suggestIttenRatios, weight, maxGap, WARN_GAP, ROLE_NAMES } from './ratio.js';
 const $ = (id) => document.getElementById(id);
 const COLORS = await (await fetch('colors.json')).json();
 
@@ -295,22 +296,14 @@ function showReadout(rgb, best) {
   $('roName').textContent = `${best.c.name} · ΔE ${best.de.toFixed(1)}`;
 }
 
-// --- area ratio (60-30-10 style) ---
-const RATIOS = { 2: [70, 30], 3: [60, 30, 10], 4: [50, 25, 15, 10] };
-let ratioMode = localStorage.getItem('sanzo-ratio') || 'equal';
-// Calm (low chroma) colours get the most area; loud colours and those
-// opposite the calmest one in hue (complements) get the least.
-function weights(members) {
-  const r = RATIOS[members.length];
-  if (ratioMode !== 'ratio' || !r) return members.map(() => 1);
-  const info = members.map((m) => { const [L, a, b] = m._lab; return { m, L, C: Math.hypot(a, b), h: Math.atan2(b, a) }; });
-  const base = [...info].sort((x, y) => x.C - y.C)[0];
-  const loud = (c) => {
-    let hd = Math.abs(c.h - base.h); if (hd > Math.PI) hd = 2 * Math.PI - hd;
-    return c.C + (c === base ? 0 : (hd / Math.PI) * Math.min(c.C, 40) * 0.5) + Math.abs(c.L - base.L) * 0.15;
-  };
-  const order = [...info].sort((x, y) => loud(x) - loud(y));
-  return info.map((c) => r[order.indexOf(c)]);
+// --- area ratio (spec: ratio.js) ---
+let ratioMode = ({ ratio: 'role' })[localStorage.getItem('sanzo-ratio')] || localStorage.getItem('sanzo-ratio') || 'equal'; // equal | role | itten
+let ratioProfile = localStorage.getItem('sanzo-profile') || 'ui';
+// Returns a % (or equal weight 1) per member, in member order.
+function weights(members, profile = ratioProfile) {
+  if (ratioMode === 'equal' || members.length < 2 || members.length > 4) return members.map(() => 1);
+  const hexes = members.map((m) => m.hex);
+  return ratioMode === 'itten' ? suggestIttenRatios(hexes) : suggestRoleRatios(hexes, profile).ratios;
 }
 function setRatio(mode) {
   ratioMode = mode; localStorage.setItem('sanzo-ratio', mode);
@@ -320,8 +313,61 @@ function setRatio(mode) {
 }
 let currentCombo = null;
 document.querySelectorAll('.ratio-tg button').forEach((b) => { b.onclick = () => setRatio(b.dataset.m); b.classList.toggle('on', b.dataset.m === ratioMode); });
-const barsHTML = (members) => { const w = weights(members); return members.map((m, i) =>
-  `<div class="obar" style="flex:${w[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${ratioMode === 'ratio' && w[i] > 1 ? `<b>${w[i]}%</b>&nbsp;` : ''}${m.name}</div>`).join(''); };
+const pctLabel = (w) => (ratioMode !== 'equal' && w !== 1 ? `<b>${Math.round(w)}%</b>` : '');
+const barsHTML = (members, profile) => { const w = weights(members, profile); return members.map((m, i) =>
+  `<div class="obar" style="flex:${w[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${pctLabel(w[i])}${pctLabel(w[i]) ? '&nbsp;' : ''}${m.name}</div>`).join(''); };
+
+// --- ratio editor sheet ---
+const PROFILES = { ui: 'UI / PPT', fashion_6030: '패션 60-30-10', fashion_7025: '패션 70-25-5' };
+let ed = null; // { members, cur:[%], profile, theory }
+function openEditor(members, profile = ratioProfile) {
+  if (members.length < 2 || members.length > 4) { toast('2-4색 조합만 비율을 계산할 수 있어요'); return; }
+  const sug = suggestRoleRatios(members.map((m) => m.hex), profile).ratios;
+  ed = { members, profile, theory: false, cur: [...sug] };
+  $('ratioSheet').hidden = false; document.body.style.overflow = 'hidden';
+  renderEditor();
+}
+function closeEditor() { $('ratioSheet').hidden = true; document.body.style.overflow = ''; ed = null; }
+function stackBar(members, pcts, label) {
+  return `<div class="lbl">${label}</div><div class="stack">${members.map((m, i) =>
+    `<div class="seg" style="flex:${pcts[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}"><b>${Math.round(pcts[i] * 10) / 10}%</b><span>${m.hex}</span></div>`).join('')}</div>`;
+}
+// Set one slider and spread the difference over the others proportionally; sum stays 100.
+function setShare(i, v) {
+  const c = ed.cur, others = c.map((_, j) => j).filter((j) => j !== i);
+  v = Math.min(95, Math.max(1, v));
+  const rest = others.reduce((s, j) => s + c[j], 0) || 1, left = 100 - v;
+  others.forEach((j) => { c[j] = (c[j] / rest) * left; });
+  c[i] = v;
+}
+function renderEditor() {
+  const { members, profile, cur } = ed, hexes = members.map((m) => m.hex);
+  const { ratios: sug, roles } = suggestRoleRatios(hexes, profile);
+  const itten = suggestIttenRatios(hexes);
+  const gap = maxGap(cur, sug), gapIt = maxGap(sug, itten);
+  $('rsProfile').innerHTML = Object.entries(PROFILES).map(([k, v]) => `<option value="${k}" ${k === profile ? 'selected' : ''}>${v}</option>`).join('');
+  $('rsTheory').checked = ed.theory;
+  $('rsBars').innerHTML = stackBar(members, cur, '현재 비율') + stackBar(members, sug, '제안 비율 (추천 범위)')
+    + (ed.theory ? stackBar(members, itten, '이론 (Itten 면적 대비)') : '');
+  const warn = [];
+  if (gap >= WARN_GAP) warn.push(`제안보다 최대 ${gap.toFixed(0)}%p 차이 · 강조색이 경쟁할 수 있음`);
+  if (ed.theory && gapIt >= WARN_GAP) warn.push(`제안과 이론이 ${gapIt.toFixed(0)}%p 달라요 · 강조색이 경쟁할 수 있음`);
+  $('rsWarn').innerHTML = warn.map((w) => `<div>⚠︎ ${w}</div>`).join('');
+  $('rsSliders').innerHTML = members.map((m, i) => {
+    const d = cur[i] - sug[i];
+    return `<div class="srow"><span class="dot" style="background:${m.hex}"></span>
+      <div class="sname">${m.name}<small>${ROLE_NAMES[roles[i]]} · 무게 ${weight(m.hex).toFixed(2)}</small></div>
+      <input type="range" min="1" max="95" step="1" value="${Math.round(cur[i])}" data-i="${i}">
+      <div class="sval">${Math.round(cur[i])}%<small class="${Math.abs(d) >= WARN_GAP ? 'bad' : ''}">${d >= 0 ? '+' : ''}${Math.round(d)}</small></div></div>`;
+  }).join('');
+  $('rsSliders').querySelectorAll('input').forEach((s) => s.oninput = () => { setShare(+s.dataset.i, +s.value); renderEditor(); });
+}
+$('rsClose').onclick = closeEditor;
+$('ratioSheet').onclick = (e) => { if (e.target.id === 'ratioSheet') closeEditor(); };
+$('rsProfile').onchange = (e) => { ed.profile = e.target.value; ratioProfile = ed.profile; localStorage.setItem('sanzo-profile', ratioProfile);
+  ed.cur = [...suggestRoleRatios(ed.members.map((m) => m.hex), ed.profile).ratios]; renderEditor(); if (currentCombo) showCombos(currentCombo); };
+$('rsTheory').onchange = (e) => { ed.theory = e.target.checked; renderEditor(); };
+$('rsReset').onclick = () => { ed.cur = [...suggestRoleRatios(ed.members.map((m) => m.hex), ed.profile).ratios]; renderEditor(); };
 
 function comboEl(k, highlight) {
   const members = COMBOS.get(k);
@@ -332,17 +378,19 @@ function comboEl(k, highlight) {
     const b = document.createElement('div'); b.className = 'bar';
     b.style.background = m.hex; b.style.color = textOn(m.rgb); b.style.flex = `${w[i]} 1 0`;
     if (highlight && m.id === highlight.id) b.classList.add('hl');
-    b.innerHTML = `${ratioMode === 'ratio' && w[i] > 1 ? `<b>${w[i]}%</b><br>` : ''}${m.name}<br>${m.hex}`;
+    b.innerHTML = `${pctLabel(w[i])}${pctLabel(w[i]) ? '<br>' : ''}${m.name}<br>${m.hex}`;
     b.title = '탭하여 HEX 복사';
     b.onclick = () => { navigator.clipboard?.writeText(m.hex); toast(`${m.hex} 복사됨`); };
     bars.append(b);
   });
   const meta = document.createElement('div'); meta.className = 'meta';
+  const rbtn = Object.assign(document.createElement('button'), { className: 'rbtn', textContent: '비율', title: '면적 비율 조정' });
+  rbtn.onclick = () => openEditor(members);
   const star = document.createElement('button'); star.className = 'star';
   const sync = () => (star.textContent = favs.includes(k) ? '★' : '☆');
   sync();
   star.onclick = () => { favs = favs.includes(k) ? favs.filter((f) => f !== k) : [...favs, k]; saveFavs(); sync(); renderFavs(); };
-  meta.append(star, Object.assign(document.createElement('span'), { textContent: `#${k}` }));
+  meta.append(star, rbtn, Object.assign(document.createElement('span'), { textContent: `#${k}` }));
   el.append(bars, meta);
   return el;
 }
@@ -453,7 +501,7 @@ function renderOutfitResults() {
   const empty = MAIN_CATS.filter((c) => !sel[c]);
   matchOutfit(chosen).forEach((r) => {
     const el = document.createElement('div'); el.className = 'ores';
-    const bars = barsHTML(r.members);
+    const bars = barsHTML(r.members, 'fashion_6030');
     const mine = chosen.map((it, i) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${esc(it.name)} → <span class="dot" style="background:${r.members[r.assign[i]].hex}"></span></span>`).join('');
     let sugg = '';
     if (r.free.length && empty.length) {
@@ -475,7 +523,9 @@ function renderOutfitResults() {
       outfits.push({ id: Date.now(), name: name || `코디 ${outfits.length + 1}`, items: chosen.map((i) => i.id), k: r.k });
       saveOutfits(); renderOutfits(); toast('코디 저장됨');
     };
-    el.append(save); box.append(el);
+    const ratioB = Object.assign(document.createElement('button'), { className: 'btn small', textContent: '면적 비율' });
+    ratioB.onclick = () => openEditor(r.members, 'fashion_6030');
+    el.append(save, ratioB); box.append(el);
   });
 }
 
@@ -486,7 +536,7 @@ function renderOutfits() {
     const its = o.items.map((id) => items.find((i) => i.id === id)).filter(Boolean);
     const el = document.createElement('div'); el.className = 'ores';
     el.innerHTML = `<div class="oname">${esc(o.name)} <span class="de">#${o.k}</span></div>
-      <div class="obars">${barsHTML(COMBOS.get(o.k))}</div>
+      <div class="obars">${barsHTML(COMBOS.get(o.k), 'fashion_6030')}</div>
       <div class="ometa">${its.map((it) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${it.cat} · ${esc(it.name)}</span>`).join('')}</div>`;
     const del = Object.assign(document.createElement('button'), { className: 'btn small', textContent: '삭제' });
     del.onclick = () => { if (!confirm('삭제할까요?')) return; outfits = outfits.filter((x) => x.id !== o.id); saveOutfits(); renderOutfits(); };

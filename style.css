@@ -91,4 +91,26 @@ h2{font-size:15px;margin:18px 0 8px}
 .ratio-tg button{border:none;background:#fff;padding:6px 12px;font-size:13px;color:#555}
 .ratio-tg button.on{background:#222;color:#fff}
 .ratio-note{margin:4px 0 6px}
+.combo .meta{gap:2px}
+.rbtn{border:1px solid #ccc;background:#fff;border-radius:8px;font-size:11px;padding:3px 6px;color:#444}
+.sheet-bg{position:fixed;inset:0;background:#0006;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#fffdf8;width:100%;max-width:760px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px max(18px,env(safe-area-inset-bottom))}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;font-size:16px}
+.camx.dark{background:#eee;color:#333;width:34px;height:34px;font-size:15px}
+.rs-ctrl{align-items:center;margin:10px 0 4px}
+.rs-ctrl select{padding:8px;border:1px solid #ccc;border-radius:10px;font-size:14px;background:#fff}
+.chk{font-size:13px;display:flex;align-items:center;gap:4px}
+.lbl{font-size:12px;color:#888;margin:10px 0 4px}
+.stack{display:flex;height:56px;border-radius:8px;overflow:hidden}
+.seg{min-width:0;overflow:hidden;white-space:nowrap;font-size:11px;padding:4px 5px;display:flex;flex-direction:column;justify-content:flex-end;transition:flex-grow .12s}
+.seg span{font-size:9px;opacity:.85;font-family:ui-monospace,Menlo,monospace}
+.warn{color:#b35f00;font-size:12px;margin:8px 0 0}
+.srow{display:flex;align-items:center;gap:8px;margin:12px 0}
+.srow .dot{width:20px;height:20px;flex:none;border-radius:50%}
+.sname{width:96px;flex:none;font-size:12px;line-height:1.2;overflow:hidden}
+.sname small{display:block;color:#999;font-size:10px}
+.srow input{flex:1;min-width:0}
+.sval{width:46px;flex:none;text-align:right;font-size:13px}
+.sval small{display:block;font-size:10px;color:#888}
+.sval small.bad{color:#b35f00;font-weight:600}
 .toast{z-index:60;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px}
