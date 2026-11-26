@@ -278,7 +278,7 @@ function pick(rgb, { scroll = true } = {}) {
     const el = document.createElement('div');
     el.className = 'match' + (i === 0 ? ' active' : '');
     el.innerHTML = `<div class="swatch" style="background:${c.hex}"></div>
-      <div class="name">${c.name}</div><div class="de">ΔE ${de.toFixed(1)} · ${c.hex}</div>`;
+      <div class="name" data-tip="${c.name}">${c.name}</div><div class="de">ΔE ${de.toFixed(1)} · ${c.hex}</div>`;
     el.onclick = () => { box.querySelectorAll('.match').forEach((m) => m.classList.remove('active')); el.classList.add('active'); showCombos(c); };
     box.append(el);
   });
@@ -320,9 +320,11 @@ function setRatio(mode) {
 }
 let currentCombo = null;
 document.querySelectorAll('.ratio-tg button').forEach((b) => { b.onclick = () => setRatio(b.dataset.m); b.classList.toggle('on', b.dataset.m === ratioMode); });
-const pctLabel = (w) => (ratioMode !== 'equal' && w !== 1 ? `<b>${Math.round(w)}%</b>` : '');
+const pctLabel = (w) => (ratioMode !== 'equal' && w !== 1 ? `${Math.round(w)}%` : '');
+// One ellipsis-truncated line per span; full text is in data-tip for the hover tooltip.
+const lines = (...ls) => ls.filter(Boolean).map((l, i) => `<span class="ln${i === 0 && /%$/.test(l) ? ' pct' : ''}">${l}</span>`).join('');
 const barsHTML = (members, profile) => { const w = weights(members, profile); return members.map((m, i) =>
-  `<div class="obar" style="flex:${w[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${pctLabel(w[i])}${pctLabel(w[i]) ? '&nbsp;' : ''}${m.name}</div>`).join(''); };
+  `<div class="obar" data-tip="${[pctLabel(w[i]), m.name, m.hex].filter(Boolean).join(' · ')}" style="flex:${w[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${lines(pctLabel(w[i]), m.name)}</div>`).join(''); };
 
 // --- ratio editor sheet ---
 const PROFILES = { ui: 'UI / PPT', fashion_6030: '패션 60-30-10', fashion_7025: '패션 70-25-5' };
@@ -337,7 +339,7 @@ function openEditor(members, profile = ratioProfile) {
 function closeEditor() { $('ratioSheet').hidden = true; document.body.style.overflow = ''; ed = null; }
 function stackBar(members, pcts, label) {
   return `<div class="lbl">${label}</div><div class="stack">${members.map((m, i) =>
-    `<div class="seg" style="flex:${pcts[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}"><b>${Math.round(pcts[i] * 10) / 10}%</b><span>${m.hex}</span></div>`).join('')}</div>`;
+    `<div class="seg" data-tip="${Math.round(pcts[i] * 10) / 10}% · ${m.name} · ${m.hex}" style="flex:${pcts[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${lines(`${Math.round(pcts[i] * 10) / 10}%`, m.hex)}</div>`).join('')}</div>`;
 }
 // Set one slider and spread the difference over the others proportionally; sum stays 100.
 function setShare(i, v) {
@@ -363,7 +365,7 @@ function renderEditor() {
   $('rsSliders').innerHTML = members.map((m, i) => {
     const d = cur[i] - sug[i];
     return `<div class="srow"><span class="dot" style="background:${m.hex}"></span>
-      <div class="sname">${m.name}<small>${ROLE_NAMES[roles[i]]} · 무게 ${weight(m.hex).toFixed(2)}</small></div>
+      <div class="sname" data-tip="${m.name}"><span class="ln">${m.name}</span><small>${ROLE_NAMES[roles[i]]} · 무게 ${weight(m.hex).toFixed(2)}</small></div>
       <input type="range" min="1" max="95" step="1" value="${Math.round(cur[i])}" data-i="${i}">
       <div class="sval">${Math.round(cur[i])}%<small class="${Math.abs(d) >= WARN_GAP ? 'bad' : ''}">${d >= 0 ? '+' : ''}${Math.round(d)}</small></div></div>`;
   }).join('');
@@ -386,8 +388,9 @@ function comboEl(k, highlight) {
     const b = document.createElement('div'); b.className = 'bar';
     b.style.background = m.hex; b.style.color = textOn(m.rgb); b.style.flex = `${w[i]} 1 0`;
     if (highlight && m.id === highlight.id) b.classList.add('hl');
-    b.innerHTML = `${pctLabel(w[i])}${pctLabel(w[i]) ? '<br>' : ''}${m.name}<br>${m.hex}`;
-    b.title = '탭하여 HEX 복사';
+    b.innerHTML = lines(pctLabel(w[i]), m.name, m.hex);
+    b.dataset.tip = [pctLabel(w[i]), m.name, m.hex].filter(Boolean).join(' · ');
+    b.title = '';
     b.onclick = () => { navigator.clipboard?.writeText(m.hex); toast(`${m.hex} 복사됨`); };
     bars.append(b);
   });
@@ -442,7 +445,7 @@ $('wardBtn').onclick = () => { $('ward').hidden = !$('ward').hidden; renderWard(
 function itemChip(it, { onclick, active, del } = {}) {
   const el = document.createElement('div');
   el.className = 'item' + (active ? ' active' : '');
-  el.innerHTML = `<span class="dot" style="background:${it.hex}"></span><span class="iname">${esc(it.name)}</span>`;
+  el.innerHTML = `<span class="dot" style="background:${it.hex}"></span><span class="iname" data-tip="${esc(it.name)}">${esc(it.name)}</span>`;
   if (onclick) el.onclick = onclick;
   if (del) {
     const x = Object.assign(document.createElement('button'), { className: 'x', textContent: '×' });
@@ -572,6 +575,23 @@ $('importFile').addEventListener('change', async (e) => {
   } catch { toast('백업 파일이 아니에요'); }
 });
 navigator.storage?.persist?.();
+
+// --- tooltip: mouse hover on desktop, long-press on touch; only when text is cut off ---
+const tip = Object.assign(document.createElement('div'), { className: 'tip' });
+tip.hidden = true; document.body.append(tip);
+const truncated = (el) => [el, ...el.querySelectorAll('.ln')].some((x) => x.scrollWidth > x.clientWidth + 1);
+function showTip(el) {
+  if (!truncated(el)) return;
+  tip.textContent = el.dataset.tip; tip.hidden = false;
+  const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+  tip.style.left = Math.max(6, Math.min(innerWidth - t.width - 6, r.left + r.width / 2 - t.width / 2)) + 'px';
+  tip.style.top = (r.top - t.height - 6 < 6 ? r.bottom + 6 : r.top - t.height - 6) + 'px';
+}
+const hideTip = () => { tip.hidden = true; };
+document.addEventListener('mouseover', (e) => { const el = e.target.closest?.('[data-tip]'); el ? showTip(el) : hideTip(); });
+let pressT = null;
+document.addEventListener('touchstart', (e) => { const el = e.target.closest?.('[data-tip]'); hideTip(); if (el) pressT = setTimeout(() => showTip(el), 400); }, { passive: true });
+['touchend', 'touchmove', 'scroll'].forEach((ev) => document.addEventListener(ev, () => { clearTimeout(pressT); setTimeout(hideTip, ev === 'touchend' ? 1200 : 0); }, { passive: true }));
 
 function toast(msg) {
   const t = Object.assign(document.createElement('div'), { className: 'toast', textContent: msg });
