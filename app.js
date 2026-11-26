@@ -295,15 +295,44 @@ function showReadout(rgb, best) {
   $('roName').textContent = `${best.c.name} · ΔE ${best.de.toFixed(1)}`;
 }
 
+// --- area ratio (60-30-10 style) ---
+const RATIOS = { 2: [70, 30], 3: [60, 30, 10], 4: [50, 25, 15, 10] };
+let ratioMode = localStorage.getItem('sanzo-ratio') || 'equal';
+// Calm (low chroma) colours get the most area; loud colours and those
+// opposite the calmest one in hue (complements) get the least.
+function weights(members) {
+  const r = RATIOS[members.length];
+  if (ratioMode !== 'ratio' || !r) return members.map(() => 1);
+  const info = members.map((m) => { const [L, a, b] = m._lab; return { m, L, C: Math.hypot(a, b), h: Math.atan2(b, a) }; });
+  const base = [...info].sort((x, y) => x.C - y.C)[0];
+  const loud = (c) => {
+    let hd = Math.abs(c.h - base.h); if (hd > Math.PI) hd = 2 * Math.PI - hd;
+    return c.C + (c === base ? 0 : (hd / Math.PI) * Math.min(c.C, 40) * 0.5) + Math.abs(c.L - base.L) * 0.15;
+  };
+  const order = [...info].sort((x, y) => loud(x) - loud(y));
+  return info.map((c) => r[order.indexOf(c)]);
+}
+function setRatio(mode) {
+  ratioMode = mode; localStorage.setItem('sanzo-ratio', mode);
+  document.querySelectorAll('.ratio-tg button').forEach((b) => b.classList.toggle('on', b.dataset.m === mode));
+  if (currentCombo) showCombos(currentCombo);
+  renderFavs(); if (!$('ward').hidden) renderWard();
+}
+let currentCombo = null;
+document.querySelectorAll('.ratio-tg button').forEach((b) => { b.onclick = () => setRatio(b.dataset.m); b.classList.toggle('on', b.dataset.m === ratioMode); });
+const barsHTML = (members) => { const w = weights(members); return members.map((m, i) =>
+  `<div class="obar" style="flex:${w[i]} 1 0;background:${m.hex};color:${textOn(m.rgb)}">${ratioMode === 'ratio' && w[i] > 1 ? `<b>${w[i]}%</b>&nbsp;` : ''}${m.name}</div>`).join(''); };
+
 function comboEl(k, highlight) {
   const members = COMBOS.get(k);
+  const w = weights(members);
   const el = document.createElement('div'); el.className = 'combo';
   const bars = document.createElement('div'); bars.className = 'bars';
-  members.forEach((m) => {
+  members.forEach((m, i) => {
     const b = document.createElement('div'); b.className = 'bar';
-    b.style.background = m.hex; b.style.color = textOn(m.rgb);
+    b.style.background = m.hex; b.style.color = textOn(m.rgb); b.style.flex = `${w[i]} 1 0`;
     if (highlight && m.id === highlight.id) b.classList.add('hl');
-    b.innerHTML = `${m.name}<br>${m.hex}`;
+    b.innerHTML = `${ratioMode === 'ratio' && w[i] > 1 ? `<b>${w[i]}%</b><br>` : ''}${m.name}<br>${m.hex}`;
     b.title = '탭하여 HEX 복사';
     b.onclick = () => { navigator.clipboard?.writeText(m.hex); toast(`${m.hex} 복사됨`); };
     bars.append(b);
@@ -319,6 +348,7 @@ function comboEl(k, highlight) {
 }
 
 function showCombos(c) {
+  currentCombo = c;
   const ks = [...c.combinations].sort((a, b) => COMBOS.get(a).length - COMBOS.get(b).length || a - b);
   $('comboTitle').textContent = `${c.name} 조합 (${ks.length})`;
   const box = $('combos'); box.innerHTML = '';
@@ -423,7 +453,7 @@ function renderOutfitResults() {
   const empty = MAIN_CATS.filter((c) => !sel[c]);
   matchOutfit(chosen).forEach((r) => {
     const el = document.createElement('div'); el.className = 'ores';
-    const bars = r.members.map((m) => `<div class="obar" style="background:${m.hex};color:${textOn(m.rgb)}">${m.name}</div>`).join('');
+    const bars = barsHTML(r.members);
     const mine = chosen.map((it, i) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${esc(it.name)} → <span class="dot" style="background:${r.members[r.assign[i]].hex}"></span></span>`).join('');
     let sugg = '';
     if (r.free.length && empty.length) {
@@ -456,7 +486,7 @@ function renderOutfits() {
     const its = o.items.map((id) => items.find((i) => i.id === id)).filter(Boolean);
     const el = document.createElement('div'); el.className = 'ores';
     el.innerHTML = `<div class="oname">${esc(o.name)} <span class="de">#${o.k}</span></div>
-      <div class="obars">${COMBOS.get(o.k).map((m) => `<div class="obar" style="background:${m.hex};color:${textOn(m.rgb)}">${m.name}</div>`).join('')}</div>
+      <div class="obars">${barsHTML(COMBOS.get(o.k))}</div>
       <div class="ometa">${its.map((it) => `<span class="mini"><span class="dot" style="background:${it.hex}"></span>${it.cat} · ${esc(it.name)}</span>`).join('')}</div>`;
     const del = Object.assign(document.createElement('button'), { className: 'btn small', textContent: '삭제' });
     del.onclick = () => { if (!confirm('삭제할까요?')) return; outfits = outfits.filter((x) => x.id !== o.id); saveOutfits(); renderOutfits(); };

@@ -85,4 +85,10 @@ h2{font-size:15px;margin:18px 0 8px}
 .shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:#fff;box-shadow:inset 0 0 0 4px #000}
 .shutter:active{transform:scale(.94)}
 .camerr{position:absolute;top:40%;left:20px;right:20px;color:#fff;text-align:center;font-size:14px}
+.combohead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:18px}
+.combohead h2{margin:0}
+.ratio-tg{display:flex;border:1px solid #ccc;border-radius:10px;overflow:hidden;flex:none}
+.ratio-tg button{border:none;background:#fff;padding:6px 12px;font-size:13px;color:#555}
+.ratio-tg button.on{background:#222;color:#fff}
+.ratio-note{margin:4px 0 6px}
 .toast{z-index:60;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px}
