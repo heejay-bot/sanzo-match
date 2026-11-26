@@ -305,12 +305,51 @@ function weights(members, profile = ratioProfile) {
   const hexes = members.map((m) => m.hex);
   return ratioMode === 'itten' ? suggestIttenRatios(hexes) : suggestRoleRatios(hexes, profile).ratios;
 }
-const RATIO_NOTES = {
-  equal: () => '균등: 모든 색을 같은 폭으로 보여줘요. 책에 실린 조합 그대로 색 자체를 비교할 때 좋아요.',
-  role: () => `비율 (${PROFILES[ratioProfile]}): 어둡고 탁한 색이 지배색, 밝고 선명한 색이 강조색이 돼요. ${({ ui: '2색 70:30 · 3색 60:30:10 · 4색 55:25:15:5', fashion_6030: '2색 70:30 · 3색 60:30:10 · 4색 50:30:15:5', fashion_7025: '2색 75:25 · 3색 70:25:5 · 4색 60:25:10:5' })[ratioProfile]}. 조합의 ‘비율’ 버튼으로 직접 조정할 수 있어요.`,
-  itten: () => '이텐: 색의 시각적 무게(밝기 × 선명도)에 반비례해 면적을 나눠요. 괴테·이텐의 면적 대비 이론(노랑:보라 = 1:3)을 따르고, 한 색은 5~70% 사이로 제한해요.',
+const RATIO_TABLE = {
+  ui: ['70 : 30', '60 : 30 : 10', '55 : 25 : 15 : 5'],
+  fashion_6030: ['70 : 30', '60 : 30 : 10', '50 : 30 : 15 : 5'],
+  fashion_7025: ['75 : 25', '70 : 25 : 5', '60 : 25 : 10 : 5'],
 };
-const renderNote = () => { $('ratioNote').textContent = RATIO_NOTES[ratioMode](); };
+// summary: one short line (fixed height). body: detailed, broken into short lines.
+const RATIO_NOTES = {
+  equal: () => ({
+    sum: '균등 · 모든 색을 같은 폭으로',
+    body: `<p>조합의 모든 색을 같은 폭으로 보여줘요.</p>
+      <p>책에 실린 조합 그대로 색을 비교할 때 좋아요.</p>
+      <p>실제 면적은 ‘비율’이나 ‘이텐’에서 보세요.</p>`,
+  }),
+  role: () => {
+    const t = RATIO_TABLE[ratioProfile];
+    return {
+      sum: `비율 · ${PROFILES[ratioProfile]} · 지배·보조·강조 역할로 배분`,
+      body: `<p>색마다 <b>시각적 무게</b>(밝기 × 선명도)를 계산해요.</p>
+        <ul>
+          <li>어둡고 탁한 색 → <b>지배색</b>, 가장 넓게</li>
+          <li>중간 무게의 색 → <b>보조색</b></li>
+          <li>밝고 선명한 색 → <b>강조색</b>, 가장 좁게</li>
+        </ul>
+        <p>지금 프로파일: <b>${PROFILES[ratioProfile]}</b></p>
+        <table class="rt"><tr><td>2색</td><td>${t[0]}</td></tr><tr><td>3색</td><td>${t[1]}</td></tr><tr><td>4색</td><td>${t[2]}</td></tr></table>
+        <p>조합 오른쪽 ‘비율’ 버튼을 누르면</p>
+        <p>프로파일을 바꾸거나 직접 조정할 수 있어요.</p>
+        <p class="muted">제안은 정답이 아니라 추천 범위예요.</p>`,
+    };
+  },
+  itten: () => ({
+    sum: '이텐 · 색의 무게에 반비례해 면적 배분',
+    body: `<p>괴테와 이텐의 <b>면적 대비</b> 이론을 따라요.</p>
+      <p>밝고 강한 색은 작게,</p>
+      <p>어둡고 약한 색은 크게 써야 균형이 맞아요.</p>
+      <table class="rt"><tr><td>노랑 : 보라</td><td>1 : 3</td></tr><tr><td>주황 : 파랑</td><td>1 : 2</td></tr><tr><td>빨강 : 초록</td><td>1 : 1</td></tr></table>
+      <p>계산: 면적 ∝ 1 ÷ 무게²</p>
+      <p>한 색은 5% ~ 70% 사이로 제한해요.</p>
+      <p class="muted">이론에 가까운 값이에요.</p>
+      <p class="muted">‘비율’과 비교하는 용도로 보세요.</p>`,
+  }),
+};
+const renderNote = () => { const n = RATIO_NOTES[ratioMode](); $('ratioSum').innerHTML = `<span class="ln">${n.sum}</span>`; $('ratioNote').innerHTML = n.body; };
+$('ratioNoteBox').open = localStorage.getItem('sanzo-note-open') === '1';
+$('ratioNoteBox').addEventListener('toggle', () => localStorage.setItem('sanzo-note-open', $('ratioNoteBox').open ? '1' : '0'));
 function setRatio(mode) {
   ratioMode = mode; localStorage.setItem('sanzo-ratio', mode);
   renderNote();
