@@ -143,6 +143,7 @@ async function openCam() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     video.srcObject = stream; await video.play();
+    video.classList.add('on');
     layoutRing();
     liveTimer = setInterval(() => {
       const rgb = sampleLive(); if (!rgb) return;
@@ -161,6 +162,7 @@ async function openCam() {
 function closeCam() {
   clearInterval(liveTimer); liveTimer = null;
   stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  video.classList.remove('on');
   video.srcObject = null; $('cam').hidden = true; document.body.style.overflow = '';
 }
 $('camBtn').onclick = openCam;
