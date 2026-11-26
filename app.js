@@ -305,8 +305,15 @@ function weights(members, profile = ratioProfile) {
   const hexes = members.map((m) => m.hex);
   return ratioMode === 'itten' ? suggestIttenRatios(hexes) : suggestRoleRatios(hexes, profile).ratios;
 }
+const RATIO_NOTES = {
+  equal: () => '균등: 모든 색을 같은 폭으로 보여줘요. 책에 실린 조합 그대로 색 자체를 비교할 때 좋아요.',
+  role: () => `비율 (${PROFILES[ratioProfile]}): 어둡고 탁한 색이 지배색, 밝고 선명한 색이 강조색이 돼요. ${({ ui: '2색 70:30 · 3색 60:30:10 · 4색 55:25:15:5', fashion_6030: '2색 70:30 · 3색 60:30:10 · 4색 50:30:15:5', fashion_7025: '2색 75:25 · 3색 70:25:5 · 4색 60:25:10:5' })[ratioProfile]}. 조합의 ‘비율’ 버튼으로 직접 조정할 수 있어요.`,
+  itten: () => '이텐: 색의 시각적 무게(밝기 × 선명도)에 반비례해 면적을 나눠요. 괴테·이텐의 면적 대비 이론(노랑:보라 = 1:3)을 따르고, 한 색은 5~70% 사이로 제한해요.',
+};
+const renderNote = () => { $('ratioNote').textContent = RATIO_NOTES[ratioMode](); };
 function setRatio(mode) {
   ratioMode = mode; localStorage.setItem('sanzo-ratio', mode);
+  renderNote();
   document.querySelectorAll('.ratio-tg button').forEach((b) => b.classList.toggle('on', b.dataset.m === mode));
   if (currentCombo) showCombos(currentCombo);
   renderFavs(); if (!$('ward').hidden) renderWard();
@@ -364,9 +371,10 @@ function renderEditor() {
 }
 $('rsClose').onclick = closeEditor;
 $('ratioSheet').onclick = (e) => { if (e.target.id === 'ratioSheet') closeEditor(); };
-$('rsProfile').onchange = (e) => { ed.profile = e.target.value; ratioProfile = ed.profile; localStorage.setItem('sanzo-profile', ratioProfile);
+$('rsProfile').onchange = (e) => { ed.profile = e.target.value; ratioProfile = ed.profile; localStorage.setItem('sanzo-profile', ratioProfile); renderNote();
   ed.cur = [...suggestRoleRatios(ed.members.map((m) => m.hex), ed.profile).ratios]; renderEditor(); if (currentCombo) showCombos(currentCombo); };
 $('rsTheory').onchange = (e) => { ed.theory = e.target.checked; renderEditor(); };
+renderNote();
 $('rsReset').onclick = () => { ed.cur = [...suggestRoleRatios(ed.members.map((m) => m.hex), ed.profile).ratios]; renderEditor(); };
 
 function comboEl(k, highlight) {
